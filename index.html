@@ -1,0 +1,134 @@
+<html>
+<head>
+
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>PadHerder Priority Setting</h1>
+    <button id="fetch_data" class="btn btn-info">Fetch</button>
+    <div class="row">
+      <form id="login" class="form col-xs-6">
+        <div class="form-group">
+          <label for="exampleInputEmail1">PadHerder Username</label>
+          <input name="padherder_username" type="email" class="form-control" id="username_field" placeholder="Username" value="SaintPeter">
+        </div>
+      </form>
+    </div>
+    <table class="table">
+      <thead>
+      </thead>
+      <tbody id="monster_table">
+      </tbody>
+    </table>
+  </div>
+  <script>
+    var monsters = {};
+    var evolutions = {};
+    var userData = {};
+    var priority = {
+      '-1': 'Done',
+       0: 'Zero',
+       1: 'Low',
+       2: 'Med',
+       3: 'High'
+    }
+
+    // Handlers
+    $('#fetch_data').on('click', fetch_user_data);
+
+    // Fetch JSON Data
+    $.getJSON('monsters.json', function(data){
+      monsters = data;
+      console.log("Monsters Data Loaded");
+    });
+
+    $.getJSON('evolutions.json', function(data){
+      evolutions = data;
+      console.log("Evolutions Data Loaded");
+    });
+
+    var someData = '';
+
+    function fetch_user_data(e) {
+      var username = $('#username_field').val().trim();
+
+      if(username != "") {
+        $.getJSON('user/' + username, function(data) {
+          if(!data.hasOwnProperty('error')) {
+            userData = data;
+            process_monster_data();
+            display_monsters();
+          } else {
+            // Error Message Here
+          }
+        })
+      }
+    }
+
+    function process_monster_data() {
+      userData.monsters = userData.monsters.map(function(userMonster) {
+        userMonster.d = monsters[userMonster.monster];
+        userMonster.evo = [];
+        if(!userMonster.target_evolution) {
+          userMonster.priority = -1;
+        }
+        userMonster.priority_display = priority[userMonster.priority]
+        return userMonster;
+      }).sort(sortFunction);
+    }
+
+    function sortFunction(a,b) {
+      if(a.priority == b.priority) {
+        if(b.d.rarity == a.d.rarity) {
+          return a.d.name.localeCompare(b.d.name, {},{sensitivity: 'base'});
+        }
+        return b.d.rarity - a.d.rarity;
+      } else {
+        return b.priority - a.priority;
+      }
+    }
+
+    function display_monsters() {
+      // Clear out the table
+      $('#monster_table').empty();
+
+      // Display the table
+      userData.monsters.forEach(function(monster){
+        var thisMonster = monsters[monster.monster];
+
+        var row = '<tr data-priority=""' + monster.priority + '" data-rarity="' + monster.d.rarity + '" data-monster-id="' + monster.id + '">' +
+                  '<td><img src="http://padherder.com' + monster.d.image60_href + '"></td>' +
+                  '<td>' + monster.d.name + '<br>Rarity: ' + monster.d.rarity + '</td>' +
+                  '<td>' + monster.priority_display + '</td>' +
+                  '<td>' + priority_buttons(monster.priority) + '</td>'
+                  '</tr>'
+        $('#monster_table').append(row);
+      })
+    }
+
+    function priority_buttons(set_priority) {
+      output = '';
+      if(set_priority > -1) {
+        for(var pri = 0; pri < 4; pri++ ) {
+          var disabled = '';
+          if(pri == set_priority) {
+            disabled = 'disabled="disabled"';
+          }
+          output += '<button class="btn btn-success btn-xs priority_button"' + disabled + ' data-priority="' + pri + '">' +
+                    priority[pri] +
+                    '</button>&nbsp;'
+        }
+        return output;
+      } else {
+        return '&nbsp;';
+      }
+
+    }
+
+
+  </script>
+</body>
+</html>
